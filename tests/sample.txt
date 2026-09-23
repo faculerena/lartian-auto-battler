@@ -1,0 +1,86 @@
+🔨 Enhanced Crystal Staff to +21 for 60 gold. Mythic Leather Vest +0 was consumed.
+
+––––––
+
+🎒 Inventory 41/50 · Page 1/5
+
+Class: Mage
+Total ATK: 691, DEF: 905
+Capacity: 41 / 228
+Equipped: 7 / 7 items
+
+Archmage Lv.125 · EXP 1107/1895 · Final form reached
+• Blade: ATK -20% · DEF -15%
+• Heavy: ATK -25% · DEF -10%
+• Light: ATK 0% · DEF 0%
+• Arcane: ATK +30% · DEF +20%
+
+––––––
+
+✓ Mythic Knight Plate +0★
+Equipped
+Adds ATK 19, DEF 130 with your class
+Capacity cost: 6 · Heavy gear
+
+✓ Mythic Tower Shield +0★
+Equipped
+Adds ATK 18, DEF 151 with your class
+Capacity cost: 7 · Heavy gear
+
+✓ Mythic Apprentice Robe +6★★★
+Equipped
+Adds ATK 68, DEF 146 with your class
+Capacity cost: 3 · Arcane gear
+
+✓ Mythic Crystal Staff +21★★★
+Equipped
+Adds ATK 299, DEF 68 with your class
+Capacity cost: 6 · Arcane gear
+
+✓ Mythic Tower Shield +4★★★
+Equipped
+Adds ATK 16, DEF 138 with your class
+Capacity cost: 7 · Heavy gear
+
+✓ Mythic Knight Plate +6★★★
+Equipped
+Adds ATK 18, DEF 130 with your class
+Capacity cost: 6 · Heavy gear
+
+✓ Mythic Crystal Staff +15★★★
+Equipped
+Adds ATK 143, DEF 32 with your class
+Capacity cost: 6 · Arcane gear
+
+○ Mythic Apprentice Robe +0★
+Unequipped — all 7 slots are full
+Adds ATK 62, DEF 134 with your class
+Capacity cost: 3 · Arcane gear
+
+○ Mythic Knight Plate +0
+Unequipped — all 7 slots are full
+Adds ATK 20, DEF 140 with your class
+Capacity cost: 6 · Heavy gear
+
+○ Mythic Iron Helm +0
+Unequipped — all 7 slots are full
+Adds ATK 10, DEF 105 with your class
+Capacity cost: 4 · Heavy gear
+
+
+Equipped items also use inventory space. Tap an item to compare stats, equip it, or upgrade it.
+   buttons: 🛡 Auto Equip Best Gear [autoequip:1]
+   buttons: 💰 Sell Unequipped Gear [sellallask:1]
+   buttons: ✓ Mythic Knight Plate +0★ [item:3625:1]
+   buttons: ✓ Mythic Tower Shield +0★ [item:3624:1]
+   buttons: ✓ Mythic Apprentice Robe +6★★★ [item:3141:1]
+   buttons: ✓ Mythic Crystal Staff +21★★★ [item:2007:1]
+   buttons: ✓ Mythic Tower Shield +4★★★ [item:1955:1]
+   buttons: ✓ Mythic Knight Plate +6★★★ [item:1954:1]
+   buttons: ✓ Mythic Crystal Staff +15★★★ [item:1455:1]
+   buttons: ○ Mythic Apprentice Robe +0★ [item:3720:1]
+   buttons: ○ Mythic Knight Plate +0 [item:3718:1]
+   buttons: ○ Mythic Iron Helm +0 [item:3717:1]
+   buttons: Next ▶ [inventory:2]
+   buttons: 🔨 Forge [forge] | 🏠 Home [status]
+

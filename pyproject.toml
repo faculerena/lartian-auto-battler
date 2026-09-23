@@ -1,0 +1,14 @@
+[project]
+name = "lartian"
+version = "0.1.0"
+description = "Terminal UI and bot for the @lartianquestbot Telegram game"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["telethon>=1.40", "textual>=8"]
+
+[project.scripts]
+lartian = "lartian.app:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

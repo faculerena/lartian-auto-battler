@@ -1,0 +1,9 @@
+# personal data: never commit
+.env
+*.session
+*.session-journal
+state.json
+dump.txt
+
+.venv/
+__pycache__/
