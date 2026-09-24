@@ -60,4 +60,6 @@ for news in ["⚡ Someone discovered the Ancient Tidemother!", "🏆 STARWYRM HA
 for reply in ["💥 You've defeated a Tower Floor #87 tier Voidling.", "🏆 Void Emperor falls! You advanced to Tower Floor #88.",
               "⚔️ All-out attack: 4172 damage!", "🔮 Player (Level 112)"]:
     assert not NEWS.match(reply), reply
+st = parse_status("• Inbox: 13 / 100\n• Keys: 83 Regular, 95 Magical\nAP: 1 / 108")
+assert (st["inbox"], st["keys_regular"], st["keys_magical"]) == (13, 83, 95)
 print("ok")

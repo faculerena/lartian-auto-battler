@@ -89,7 +89,9 @@ def parse_status(text):
     ancient = re.search(r"Current Ancient: (.+)", text)
     return {"gold": num(r"Gold: (\d+)"), "level": num(r"\(Level (\d+)\)"),
             "ap": num(r"AP: (\d+)"), "bp": num(r"BP: (\d+)"),
-            "ancient": ancient[1].strip() if ancient else None}
+            "ancient": ancient[1].strip() if ancient else None,
+            "inbox": num(r"Inbox: (\d+) /"),
+            "keys_regular": num(r"Keys: (\d+) Regular"), "keys_magical": num(r"Keys: \d+ Regular, (\d+) Magical")}
 
 
 def next_fight(st, boss_ready, skip_ancient=False):
@@ -338,3 +340,46 @@ class Game:
             out.append("\n".join(block))
         Path(path).write_text("\n\n".join(reversed(out)))
         return len(out)
+
+    async def toggle_equip(self, item):
+        """Equip or unequip `item`. Returns the game's reply line."""
+        msg = await self._open_item(item.id)
+        msg = await self.tap(msg, rf"equip:{item.id}:\d+")
+        first = msg.raw_text.splitlines()[0]
+        if not re.match(r"(Equipped|Unequipped) ", first):
+            raise GameError(first)
+        return first
+
+    async def auto_equip(self):
+        """The game's Auto Equip Best Gear. Returns its summary lines."""
+        msg = await self.tap(await self.home(), r"inventory:1")
+        msg = await self.tap(msg, r"autoequip:\d+")
+        lines = msg.raw_text.splitlines()
+        if not lines[0].startswith("🛡 Auto-equipped"):
+            raise GameError(lines[0])
+        return lines[:2]
+
+    async def open_chests(self, kind):
+        """Bulk-open inbox chests with `kind` keys ("regular" / "magical"). Regular keys break half
+        the time, so batches repeat until the inbox is empty or a batch uses no keys
+        (out of keys or inventory full). Returns the item names found."""
+        found = []
+        msg = await self.tap(await self.home(), r"inbox:1")
+        for _ in range(100):  # safety cap
+            if not find(msg, r"openallmenu:\d+") and "Your inbox is empty" not in msg.raw_text:
+                msg = await self.tap(await self.home(), r"inbox:1")
+            if not find(msg, r"openallmenu:\d+"):
+                self.log("inbox empty")
+                return found
+            msg = await self.tap(msg, r"openallmenu:\d+")
+            msg = await self.tap(msg, rf"openallask:{kind}:\d+")
+            msg = await self.tap(msg, rf"openalldo:{kind}:\d+")
+            m = re.search(r"Used (\d+) \w+ Key\(s\): (\d+) chest\(s\) opened", msg.raw_text)
+            if not m:
+                raise GameError(msg.raw_text.splitlines()[0])
+            items = re.search(r"Items found:\n(.+?)\n\n", msg.raw_text, re.S)
+            found += items[1].splitlines() if items else []
+            self.log(msg.raw_text.splitlines()[0])
+            if int(m[1]) == 0 or kind == "magical":
+                return found
+        return found

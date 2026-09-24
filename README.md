@@ -7,6 +7,7 @@ Telegram account and taps the game's buttons for you.
 - Enhance / evolve a target with marked items
 - Sell marked items (respects locks)
 - Adventure (full): spend BP on the Ancient, AP on the floor boss, the rest on adventures
+- Equip / unequip, auto-equip, open inbox chests
 
 Automating a game may break its rules. Your account, your risk.
 
@@ -40,6 +41,9 @@ Telegram account. Don't share it.
 | `e` / `v` | enhance / evolve target with marked items |
 | `x` | sell marked items |
 | `p` | Adventure (full) |
+| `u` | equip / unequip item under cursor |
+| `A` | auto-equip (the game's quick pick) |
+| `o` / `O` | open all inbox chests with regular / magical keys |
 | `k` | stop current run |
 | `s` / `S` / click header | sort / reverse |
 | `f` | only items that can be eaten |

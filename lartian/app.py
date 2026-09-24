@@ -126,6 +126,10 @@ class Lartian(App):
         Binding("v", "feed('evolve')", "Evolve"),
         Binding("x", "sell", "Sell marked"),
         Binding("p", "adventure", "Adventure (full)"),
+        Binding("u", "equip", "Equip/unequip"),
+        Binding("A", "auto_equip", "Auto-equip"),
+        Binding("o", "open('regular')", "Open chests"),
+        Binding("O", "open('magical')", "Open (magical)", show=False),
         Binding("k", "stop", "Stop"),
         Binding("s", "sort", "Sort"),
         Binding("S", "reverse", "Reverse", show=False),
@@ -207,6 +211,7 @@ class Lartian(App):
         st = self.status
         parts = [f"💰 {st.get('gold', '?')}  AP {st.get('ap', '?')}  BP {st.get('bp', '?')}"
                  + (f"  🌌 {st['ancient']}" if st.get("ancient") else ""),
+                 f"📬 {st.get('inbox', '?')}  🔑 {st.get('keys_regular', '?')}/{st.get('keys_magical', '?')}",
                  f"items {len(self.items)}",
                  f"target: {t.label if t else '-'}",
                  f"marked {len(self.marks)} (enhance ≈{est}g)",
@@ -524,10 +529,7 @@ class Lartian(App):
                 f"Last known: AP {st.get('ap', '?')}, BP {st.get('bp', '?')}, "
                 f"Ancient {st.get('ancient') or 'none'}.\nPress k to stop after the current fight.")
 
-        def go(yes):
-            if yes:
-                self.run_worker(self._run(self._adventure()), exclusive=True)
-        self.push_screen(Confirm(text), go)
+        self.confirm_run(text, self._adventure)
 
     async def _adventure(self):
         self.stop_requested = False
@@ -551,10 +553,56 @@ class Lartian(App):
             self.status["gold"] += n
 
     def confirm(self, text, ids, what, step):
+        self.confirm_run(text, lambda: self._batch(ids, what, step))
+
+    def confirm_run(self, text, make_coro):
+        """Ask, then run `make_coro()` as the one active run."""
         def go(yes):
             if yes:
-                self.run_worker(self._run(self._batch(ids, what, step)), exclusive=True)
+                self.run_worker(self._run(make_coro()), exclusive=True)
         self.push_screen(Confirm(text), go)
+
+    # ---- equipment / inbox ----
+
+    def action_equip(self):
+        i = self.cursor_id()
+        if i is None or not self.ready():
+            return
+        it = self.items[i]
+
+        async def run():
+            self.log_line(f"[green]{await tg(self.game.toggle_equip(it))}[/green]")
+            await self._sync()
+        self.run_worker(self._run(run()), exclusive=True)
+
+    def action_auto_equip(self):
+        if not self.ready():
+            return
+
+        async def run():
+            for line in await tg(self.game.auto_equip()):
+                self.log_line(f"[green]{line}[/green]")
+            await self._sync()
+        self.confirm_run("[b]Auto-equip[/b]\n\nThe game's quick pick: highest class-adjusted ATK or DEF "
+                         "first, within Capacity. Replaces your current gear.", run)
+
+    def action_open(self, kind):
+        if not self.ready():
+            return
+        st = self.status
+        rule = ("50% per try. Repeats until the inbox is empty or keys or inventory space run out."
+                if kind == "regular" else "Always works.")
+        text = (f"[b]Open all chests with {kind} keys[/b]\n\n{rule}\n\n"
+                f"Inbox {st.get('inbox', '?')}, keys {st.get('keys_regular', '?')} regular / "
+                f"{st.get('keys_magical', '?')} magical.")
+
+        async def run():
+            found = await tg(self.game.open_chests(kind))
+            for name in found:
+                self.log_line(f"[green]+ {name}[/green]")
+            self.log_line(f"opened {len(found)} chest(s)")
+            await self._sync()
+        self.confirm_run(text, run)
 
     async def _batch(self, ids, what, step):
         """Run `step(item)` for each id; each finished item leaves the cache. Resyncs at the end."""
