@@ -82,6 +82,13 @@ def parse_inventory(text, btns):
     return items, int(m[1]), int(m[2])
 
 
+def parse_counts(text):
+    """Inventory header totals: (items, equipped), or None if this isn't an inventory screen."""
+    n = re.search(r"Inventory (\d+)/\d+", text)
+    eq = re.search(r"Equipped: (\d+) /", text)
+    return n and eq and (int(n[1]), int(eq[1]))
+
+
 def parse_status(text):
     def num(pattern):
         m = re.search(pattern, text)
@@ -147,6 +154,7 @@ class Game:
         self.client = TelegramClient(str(session), int(api_id), api_hash)
         self.q = asyncio.Queue()
         self.cur = None  # last bot message we navigated to
+        self.seen = {}  # msg id -> recent bot messages with buttons, see recall()
         self.log = print
 
     async def start(self):
@@ -190,7 +198,20 @@ class Game:
             else:
                 reply = msg
         self.cur = reply or news
+        if self.cur.buttons:
+            self.seen[self.cur.id] = self.cur
+            if len(self.seen) > 300:  # ponytail: plain size cap, oldest first
+                del self.seen[next(iter(self.seen))]
         return self.cur
+
+    def recall(self, pattern):
+        """Newest seen message with a button matching `pattern`. Old bot messages keep their
+        buttons and the bot answers them (it replies with a new message and never edits the old
+        one), so this jumps straight to a screen instead of navigating there."""
+        for msg in reversed(self.seen.values()):
+            if find(msg, pattern):
+                return msg
+        return None
 
     async def home(self):
         self._drain()
@@ -237,8 +258,9 @@ class Game:
             msg = await self.tap(msg, rf"inventory:{page + 1}", "Next")
 
     async def _open_item(self, target):
-        msg = self.cur
-        if msg is None or not find(msg, rf"item:{target}:\d+"):
+        msg = self.recall(rf"item:{target}:\d+")  # every item after a sync
+        if msg is None:
+            msg = self.cur
             if msg is None or not find(msg, r"inventory:1"):
                 msg = await self.home()
             msg = await self.tap(msg, r"inventory:1")
@@ -250,13 +272,15 @@ class Game:
 
     async def feed_one(self, kind, target, material):
         """Consume `material` into `target` (Items from the cache). Returns parse_result dict."""
-        msg = await self._open_item(target.id)
-        msg = await self.tap(msg, rf"materials:{kind}:{target.id}:\d+:1")
         pick = rf"preview:{kind}:{target.id}:{material.id}:\d+:\d+"
-        while not find(msg, pick):
-            if not find(msg, rf"materials:{kind}:.*", "Next"):
-                raise GameError(f"{material.label} (#{material.id}) not offered as material")
-            msg = await self.tap(msg, rf"materials:{kind}:.*", "Next")
+        msg = self.recall(pick)  # a materials list from an earlier step of the batch
+        if msg is None:
+            msg = await self._open_item(target.id)
+            msg = await self.tap(msg, rf"materials:{kind}:{target.id}:\d+:1")
+            while not find(msg, pick):
+                if not find(msg, rf"materials:{kind}:.*", "Next"):
+                    raise GameError(f"{material.label} (#{material.id}) not offered as material")
+                msg = await self.tap(msg, rf"materials:{kind}:.*", "Next")
         msg = await self.tap(msg, pick)
 
         pv = parse_preview(msg.raw_text)
@@ -292,9 +316,13 @@ class Game:
         skip_ancient = False
         msg = await self.home()
         while True:
-            if parse_status(msg.raw_text)["ap"] is None or not find(msg, "adventure"):
-                msg = await self.tap(msg, "status") if find(msg, "status") else await self.home()
             st = parse_status(msg.raw_text)
+            if st["bp"] and not skip_ancient and find(msg, r"ancientattack:\d+:1"):
+                # still on the Ancient with BP left: hit again, skip Home
+                st["ancient"] = re.search(r"🌌 ([^,(]+)", msg.raw_text)[1].strip()
+            elif st["ap"] is None or not find(msg, "adventure"):
+                msg = await self.tap(msg, "status") if find(msg, "status") else await self.home()
+                st = parse_status(msg.raw_text)
             if stop():
                 self.log("stopped by you")
                 return totals, st
@@ -303,8 +331,8 @@ class Game:
                 self.log(f"out of AP and BP (AP {st['ap']}, BP {st['bp']})")
                 return totals, st
             if action[0] == "ancient":
-                screen = await self.tap(msg, "ancient")
                 attack = rf"ancientattack:\d+:{action[1]}"
+                screen = msg if find(msg, attack) else await self.tap(msg, "ancient")
                 if not find(screen, attack):
                     self.log(f"no attack button on the Ancient screen, skipping it: "
                              f"{screen.raw_text.splitlines()[0]!r}")
@@ -352,7 +380,7 @@ class Game:
 
     async def auto_equip(self):
         """The game's Auto Equip Best Gear. Returns its summary lines."""
-        msg = await self.tap(await self.home(), r"inventory:1")
+        msg = self.recall(r"autoequip:\d+") or await self.tap(await self.home(), r"inventory:1")
         msg = await self.tap(msg, r"autoequip:\d+")
         lines = msg.raw_text.splitlines()
         if not lines[0].startswith("🛡 Auto-equipped"):
@@ -364,10 +392,10 @@ class Game:
         the time, so batches repeat until the inbox is empty or a batch uses no keys
         (out of keys or inventory full). Returns the item names found."""
         found = []
-        msg = await self.tap(await self.home(), r"inbox:1")
+        msg = await self.tap(self.recall(r"inbox:1") or await self.home(), r"inbox:1")
         for _ in range(100):  # safety cap
             if not find(msg, r"openallmenu:\d+") and "Your inbox is empty" not in msg.raw_text:
-                msg = await self.tap(await self.home(), r"inbox:1")
+                msg = await self.tap(self.recall(r"inbox:1") or await self.home(), r"inbox:1")
             if not find(msg, r"openallmenu:\d+"):
                 self.log("inbox empty")
                 return found

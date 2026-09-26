@@ -1,7 +1,7 @@
 """Parser and decision checks against real bot messages. Run: uv run tests/test_parse.py"""
 import re
 from pathlib import Path
-from lartian.game import (NEWS, Item, next_fight, parse_inventory, parse_preview, parse_result,
+from lartian.game import (NEWS, Item, next_fight, parse_counts, parse_inventory, parse_preview, parse_result,
                           parse_status, strip_level)
 
 RESULT = Path(__file__).with_name("sample.txt").read_text()
@@ -21,6 +21,7 @@ def split(raw):
 text, btns = split(RESULT)
 items, page, pages = parse_inventory(text, btns)
 assert (page, pages, len(items)) == (1, 5, 10)
+assert parse_counts(text) == (41, 7) and parse_counts("🔮 Player (Level 112)") is None
 staff = next(i for i in items if i.id == 2007)
 assert (staff.name, staff.plus, staff.stars, staff.equipped) == ("Mythic Crystal Staff", 21, 3, True)
 assert (staff.atk, staff.defense, staff.capacity, staff.gear) == (299, 68, 6, "Arcane")
@@ -62,4 +63,8 @@ for reply in ["💥 You've defeated a Tower Floor #87 tier Voidling.", "🏆 Voi
     assert not NEWS.match(reply), reply
 st = parse_status("• Inbox: 13 / 100\n• Keys: 83 Regular, 95 Magical\nAP: 1 / 108")
 assert (st["inbox"], st["keys_regular"], st["keys_magical"]) == (13, 83, 95)
+# Ancient attack results carry BP, so the loop can keep hitting from them
+hit = parse_status("⚔️ Attack: 3100 damage!\n\n• Spent 1 BP\n\n🌌 Tidemother, the Hunger Below (Level 110 Ancient)\n"
+                   "• Attack: spend 1 BP for one normal hit.\n\nYour BP: 2 / 3 (next +1 in 15m)")
+assert (hit["bp"], hit["ap"]) == (2, None) and next_fight({**hit, "ancient": "Tidemother"}, False) == ("ancient", 1)
 print("ok")

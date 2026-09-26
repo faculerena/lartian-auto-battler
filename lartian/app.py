@@ -16,7 +16,7 @@ from textual.widgets import Button, DataTable, Footer, Header, Input, RichLog, S
 
 from telethon.errors import ApiIdInvalidError, PhoneCodeInvalidError, SessionPasswordNeededError
 
-from .game import Game, GameError, Item, cost, parse_status
+from .game import Game, GameError, Item, buttons, cost, parse_counts, parse_inventory, parse_status
 
 # credentials, Telegram session and local cache live here, never next to the code
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "lartian"
@@ -338,6 +338,22 @@ class Lartian(App):
         self.save()
         self.log_line(f"synced {len(items)} items, gold {self.status.get('gold')}")
 
+    async def _refresh(self):
+        """Merge the inventory page the last reply landed on (forge, sell and equip results show
+        one). Walk every page only when the header's item or equipped count disagrees with the cache."""
+        msg = self.game.cur
+        try:
+            page = msg and parse_inventory(msg.raw_text, buttons(msg))
+        except GameError:
+            page = None
+        if page:
+            self.items.update({i.id: i for i in page[0]})
+        if not page or parse_counts(msg.raw_text) != (len(self.items),
+                                                      sum(i.equipped for i in self.items.values())):
+            self.log_line("refreshing inventory…")
+            return await self._sync()
+        self.save()
+
     def action_target(self):
         if (i := self.cursor_id()) is not None:
             self.target = None if self.target == i else i
@@ -572,7 +588,7 @@ class Lartian(App):
 
         async def run():
             self.log_line(f"[green]{await tg(self.game.toggle_equip(it))}[/green]")
-            await self._sync()
+            await self._refresh()
         self.run_worker(self._run(run()), exclusive=True)
 
     def action_auto_equip(self):
@@ -625,8 +641,7 @@ class Lartian(App):
                 if not keep_going:
                     break
         finally:
-            self.log_line("refreshing inventory…")
-            await self._sync()
+            await self._refresh()
 
 async def _dump(limit):
     if not CREDS.exists():
