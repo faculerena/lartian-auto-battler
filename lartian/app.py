@@ -613,10 +613,11 @@ class Lartian(App):
                 f"{st.get('keys_magical', '?')} magical.")
 
         async def run():
-            found = await tg(self.game.open_chests(kind))
+            found, used, opened = await tg(self.game.open_chests(kind))
             for name in found:
                 self.log_line(f"[green]+ {name}[/green]")
-            self.log_line(f"opened {len(found)} chest(s)")
+            rate = f" ({opened / used:.0%})" if used else ""
+            self.log_line(f"used {used} key(s), opened {opened} chest(s){rate}")
             await self._sync()
         self.confirm_run(text, run)
 

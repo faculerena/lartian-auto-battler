@@ -390,15 +390,15 @@ class Game:
     async def open_chests(self, kind):
         """Bulk-open inbox chests with `kind` keys ("regular" / "magical"). Regular keys break half
         the time, so batches repeat until the inbox is empty or a batch uses no keys
-        (out of keys or inventory full). Returns the item names found."""
-        found = []
+        (out of keys or inventory full). Returns (item names found, keys used, chests opened)."""
+        found, used, opened = [], 0, 0
         msg = await self.tap(self.recall(r"inbox:1") or await self.home(), r"inbox:1")
         for _ in range(100):  # safety cap
             if not find(msg, r"openallmenu:\d+") and "Your inbox is empty" not in msg.raw_text:
                 msg = await self.tap(self.recall(r"inbox:1") or await self.home(), r"inbox:1")
             if not find(msg, r"openallmenu:\d+"):
                 self.log("inbox empty")
-                return found
+                break
             msg = await self.tap(msg, r"openallmenu:\d+")
             msg = await self.tap(msg, rf"openallask:{kind}:\d+")
             msg = await self.tap(msg, rf"openalldo:{kind}:\d+")
@@ -407,7 +407,9 @@ class Game:
                 raise GameError(msg.raw_text.splitlines()[0])
             items = re.search(r"Items found:\n(.+?)\n\n", msg.raw_text, re.S)
             found += items[1].splitlines() if items else []
+            used += int(m[1])
+            opened += int(m[2])
             self.log(msg.raw_text.splitlines()[0])
             if int(m[1]) == 0 or kind == "magical":
-                return found
-        return found
+                break
+        return found, used, opened
